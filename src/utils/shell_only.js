@@ -88,6 +88,15 @@ export const getAppByIdAndEntry = (id, entry) => {
     return null;
 };
 
+let soupSession = null;
+
+const getSoupSession = () => {
+    if (soupSession == null) {
+        soupSession = new Soup.Session();
+    }
+    return soupSession;
+};
+
 /**
  * @param {string} url
  * @returns {Promise<Gio.InputStream>}
@@ -131,7 +140,7 @@ export const getImage = async (url) => {
             }
             return stream;
         } else if (scheme === "http" || scheme === "https") {
-            const session = new Soup.Session();
+            const session = getSoupSession();
             const message = new Soup.Message({ method: "GET", uri });
             const bytes = await session.send_and_read_async(message, null, null).catch(errorLog);
             if (bytes == null) {

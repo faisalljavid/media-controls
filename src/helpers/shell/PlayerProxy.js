@@ -12,7 +12,7 @@ import GLib from "gi://GLib";
 /**
  * @typedef {Map<
  *     KeysOf<PlayerProxyProperties>,
- *     ((value: PlayerProxyProperties[KeysOf<PlayerProxyProperties>]) => void)[]
+ *     Map<number, (value: PlayerProxyProperties[KeysOf<PlayerProxyProperties>]) => void>
  * >} PlayerProxyChangeListeners
  */
 
@@ -46,6 +46,11 @@ export default class PlayerProxy {
      * @private
      * @type {number}
      */
+    _nextListenerId;
+    /**
+     * @private
+     * @type {number}
+     */
     pollSourceId;
 
     /**
@@ -67,6 +72,7 @@ export default class PlayerProxy {
         this.isPinned = false;
         this.isInvalid = true;
         this.changeListeners = new Map();
+        this._nextListenerId = 0;
     }
 
     /**
@@ -228,7 +234,7 @@ export default class PlayerProxy {
         if (listeners == null) {
             return;
         }
-        for (const listener of listeners) {
+        for (const listener of listeners.values()) {
             try {
                 listener(value);
             } catch (error) {
@@ -571,14 +577,13 @@ export default class PlayerProxy {
      * @returns {number}
      */
     onChanged(property, callback) {
-        const listeners = this.changeListeners.get(property);
-        let id;
+        let listeners = this.changeListeners.get(property);
         if (listeners == null) {
-            id = 0;
-            this.changeListeners.set(property, [callback]);
-        } else {
-            id = listeners.push(callback);
+            listeners = new Map();
+            this.changeListeners.set(property, listeners);
         }
+        const id = ++this._nextListenerId;
+        listeners.set(id, callback);
         return id;
     }
 
@@ -594,7 +599,7 @@ export default class PlayerProxy {
         if (listeners == null) {
             return;
         }
-        listeners.splice(id, 1);
+        listeners.delete(id);
     }
 
     /**

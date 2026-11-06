@@ -55,7 +55,10 @@ class MenuSlider extends St.BoxLayout {
      *
      */
     constructor() {
-        super({ vertical: true });
+        super({ orientation: Clutter.Orientation.VERTICAL });
+        if (typeof this.set_vertical === "function") {
+            this.set_vertical(true);
+        }
         this.rate = 1.0;
         this.slider = new Slider.Slider(0);
         this.textBox = new St.BoxLayout();
@@ -114,10 +117,16 @@ class MenuSlider extends St.BoxLayout {
             }),
         });
 
+        let lastSec = -1;
         this.transition.connectObject(
-            "marker-reached",
-            (_, name) => {
-                this.elapsedLabel.text = name;
+            "new-frame",
+            (_, msecs) => {
+                if (this.disabled) return;
+                const currentSec = Math.floor((msecs * this.rate) / 1000);
+                if (currentSec !== lastSec) {
+                    lastSec = currentSec;
+                    this.elapsedLabel.text = msToHHMMSS(currentSec * 1000);
+                }
             },
             this,
         );
@@ -231,16 +240,9 @@ class MenuSlider extends St.BoxLayout {
      * @returns {void}
      */
     updateMarkers() {
-        const noOfSecs = Math.floor(this.transition.duration / (1000 / this.rate));
-        const markers = this.transition.list_markers(-1);
-        for (const marker of markers) {
-            this.transition.remove_marker(marker);
-        }
-        for (let i = 0; i <= noOfSecs; i++) {
-            const ms = i * 1000;
-            const elapsedText = msToHHMMSS(ms);
-            this.transition.add_marker_at_time(elapsedText, ms / this.rate);
-        }
+        // Markers are no longer flooded into the Clutter timeline;
+        // elapsed time is smoothly driven by the timeline's new-frame signal
+        // avoiding thousands of marker allocations for long audio tracks.
     }
 
     /**
